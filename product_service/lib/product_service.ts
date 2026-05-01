@@ -18,13 +18,13 @@ export class ProductServiceStack extends cdk.Stack {
 
     const getProductsListFn = new lambda.Function(this, 'GetProductsListFn', {
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'getProductsList.handler',
+      handler: 'handlers/getProductsList.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
     });
 
     const getProductByIdFn = new lambda.Function(this, 'GetProductByIdFn', {
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'getProductsById.handler',
+      handler: 'handlers/getProductsById.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
     });
 

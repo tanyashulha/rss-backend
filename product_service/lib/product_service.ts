@@ -8,6 +8,14 @@ export class ProductServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    const api = new apigateway.RestApi(this, 'ProductApi', {
+      defaultCorsPreflightOptions: {
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowMethods: apigateway.Cors.ALL_METHODS,
+        allowHeaders: apigateway.Cors.DEFAULT_HEADERS,
+      }
+    });
+
     const getProductsListFn = new lambda.Function(this, 'GetProductsListFn', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'getProductsList.handler',
@@ -19,8 +27,6 @@ export class ProductServiceStack extends cdk.Stack {
       handler: 'getProductsById.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
     });
-
-    const api = new apigateway.RestApi(this, 'ProductApi');
 
     const products = api.root.addResource('products');
 

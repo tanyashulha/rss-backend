@@ -29,6 +29,16 @@ export class ProductServiceStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    const createProductFn = new lambda.Function(this, 'CreateProductFn', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'handlers/createProduct.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
+      environment: {
+        PRODUCTS_TABLE: productsTable.tableName,
+        STOCKS_TABLE: stocksTable.tableName,
+      },
+    });
+
     const api = new apigateway.RestApi(this, 'ProductApi', {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
@@ -63,11 +73,19 @@ export class ProductServiceStack extends cdk.Stack {
     productsTable.grantReadData(getProductByIdFn);
     stocksTable.grantReadData(getProductByIdFn);
 
+    productsTable.grantWriteData(createProductFn);
+    stocksTable.grantWriteData(createProductFn);
+
     const products = api.root.addResource('products');
 
     products.addMethod('GET', new apigateway.LambdaIntegration(getProductsListFn));
 
     const productById = products.addResource('{productId}');
     productById.addMethod('GET', new apigateway.LambdaIntegration(getProductByIdFn));
+
+    products.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(createProductFn)
+    );
   }
 }

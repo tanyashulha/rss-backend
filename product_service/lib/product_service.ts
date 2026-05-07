@@ -3,10 +3,31 @@ import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as path from 'path';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 
 export class ProductServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+
+    const productsTable = new dynamodb.Table(this, 'ProductsTable', {
+      tableName: 'products',
+      partitionKey: {
+        name: 'id',
+        type: dynamodb.AttributeType.STRING,
+      },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    const stocksTable = new dynamodb.Table(this, 'StocksTable', {
+      tableName: 'stocks',
+      partitionKey: {
+        name: 'product_id',
+        type: dynamodb.AttributeType.STRING,
+      },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
 
     const api = new apigateway.RestApi(this, 'ProductApi', {
       defaultCorsPreflightOptions: {
@@ -20,13 +41,27 @@ export class ProductServiceStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'handlers/getProductsList.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
+      environment: {
+        PRODUCTS_TABLE: productsTable.tableName,
+        STOCKS_TABLE: stocksTable.tableName,
+      },
     });
 
     const getProductByIdFn = new lambda.Function(this, 'GetProductByIdFn', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'handlers/getProductsById.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../lambda')),
+      environment: {
+        PRODUCTS_TABLE: productsTable.tableName,
+        STOCKS_TABLE: stocksTable.tableName,
+      },
     });
+
+    productsTable.grantReadData(getProductsListFn);
+    stocksTable.grantReadData(getProductsListFn);
+
+    productsTable.grantReadData(getProductByIdFn);
+    stocksTable.grantReadData(getProductByIdFn);
 
     const products = api.root.addResource('products');
 

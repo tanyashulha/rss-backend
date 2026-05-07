@@ -1,5 +1,6 @@
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
+const { DynamoDBDocumentClient, TransactWriteCommand } = require("@aws-sdk/lib-dynamodb");
+const { randomUUID } = require("crypto");
 
 const client = new DynamoDBClient({});
 const dynamo = DynamoDBDocumentClient.from(client);
@@ -9,23 +10,28 @@ const STOCKS_TABLE = process.env.STOCKS_TABLE;
 
 exports.handler = async (event) => {
   try {
-    const body = JSON.parse(event.body);
+    console.log("Incoming event:", JSON.stringify(event));
+
+    const body = JSON.parse(event.body || "{}");
+    console.log("Body:", body);
 
     const { title, description, price, count } = body;
 
-    if (!title || price === undefined || count === undefined) {
+    if (!title ||
+        typeof title !== "string" ||
+        !description ||
+        typeof price !== "number" ||
+        price < 0 ||
+        typeof count !== "number" ||
+        count < 0) {
       return {
         statusCode: 400,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Headers": "*",
-          "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS"
-        },
+        headers: corsHeaders(),
         body: JSON.stringify({ message: "Invalid product data" }),
       };
     }
 
-    const id = Date.now().toString();
+    const id = randomUUID();
 
     const product = {
       id,
@@ -40,42 +46,44 @@ exports.handler = async (event) => {
     };
 
     await dynamo.send(
-      new PutCommand({
-        TableName: PRODUCTS_TABLE,
-        Item: product,
-      })
-    );
-
-    await dynamo.send(
-      new PutCommand({
-        TableName: STOCKS_TABLE,
-        Item: stock,
+      new TransactWriteCommand({
+        TransactItems: [
+          {
+            Put: {
+              TableName: PRODUCTS_TABLE,
+              Item: product,
+            },
+          },
+          {
+            Put: {
+              TableName: STOCKS_TABLE,
+              Item: stock,
+            },
+          },
+        ],
       })
     );
 
     return {
       statusCode: 201,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "*",
-        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS"
-      },
-      body: JSON.stringify({
-        ...product,
-        count,
-      }),
+      headers: corsHeaders(),
+      body: JSON.stringify({ ...product, count }),
     };
   } catch (err) {
-    console.error(err);
+    console.error("ERROR:", err);
 
     return {
       statusCode: 500,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "*",
-        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS"
-      },
+      headers: corsHeaders(),
       body: JSON.stringify({ message: "Internal Server Error" }),
     };
   }
 };
+
+function corsHeaders() {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "*",
+    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+  };
+}

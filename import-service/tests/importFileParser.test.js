@@ -8,17 +8,19 @@ jest.mock('@aws-sdk/client-s3', () => {
       send: mockSend,
     })),
     GetObjectCommand: jest.fn(),
+    CopyObjectCommand: jest.fn(),
+    DeleteObjectCommand: jest.fn(),
   };
 });
 
 jest.mock('csv-parser', () => {
   return () => {
-    const Transform = require('stream').Transform;
+    const { Transform } = require('stream');
 
     return new Transform({
       objectMode: true,
-      transform(chunk, encoding, callback) {
-        callback(null, chunk);
+      transform(chunk, enc, cb) {
+        cb(null, chunk);
       },
     });
   };
@@ -37,16 +39,17 @@ describe('importFileParser', () => {
     jest.restoreAllMocks();
   });
 
-  it('processes S3 event and parses CSV', async () => {
+  it('processes CSV and moves file to parsed folder', async () => {
     const readable = stream.Readable.from([
       'id,name\n',
       '1,apple\n',
       '2,banana\n',
     ]);
 
-    mockSend.mockResolvedValue({
-      Body: readable,
-    });
+    mockSend
+      .mockResolvedValueOnce({ Body: readable })
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({});
 
     const event = {
       Records: [
@@ -61,11 +64,11 @@ describe('importFileParser', () => {
 
     await handler(event);
 
-    expect(mockSend).toHaveBeenCalledTimes(1);
+    expect(mockSend).toHaveBeenCalledTimes(3);
   });
 
-  it('throws on S3 error', async () => {
-    mockSend.mockRejectedValue(new Error('S3 fail'));
+  it('throws error when S3 fails', async () => {
+    mockSend.mockRejectedValue(new Error('S3 error'));
 
     const event = {
       Records: [
@@ -78,6 +81,6 @@ describe('importFileParser', () => {
       ],
     };
 
-    await expect(handler(event)).rejects.toThrow('S3 fail');
+    await expect(handler(event)).rejects.toThrow('S3 error');
   });
 });

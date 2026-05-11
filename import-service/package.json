@@ -6,7 +6,10 @@
     "constructs": "^10.6.0",
     "csv-parser": "^3.2.1"
   },
-  "directories": {
-    "test": "tests"
+  "devDependencies": {
+    "jest": "^30.3.0"
+  },
+  "scripts": {
+    "test": "jest"
   }
 }

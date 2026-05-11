@@ -4,7 +4,6 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as path from 'path';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as s3 from 'aws-cdk-lib/aws-s3';
 
 export class ProductServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -68,25 +67,6 @@ export class ProductServiceStack extends cdk.Stack {
       },
     });
 
-    const bucket = s3.Bucket.fromBucketName(
-      this,
-      'ImportBucket',
-      'import-service-bucket-shop'
-    );
-
-    const importProductsFileLambda = new lambda.Function(this, 'ImportProductsFile', {
-      runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'importProductsFile.handler',
-      code: lambda.Code.fromAsset(
-        path.join(__dirname, '../../import-service/lambda/handlers')
-      ),
-      environment: {
-        BUCKET_NAME: bucket.bucketName,
-      },
-    });
-
-    bucket.grantPut(importProductsFileLambda);
-
     productsTable.grantReadData(getProductsListFn);
     stocksTable.grantReadData(getProductsListFn);
 
@@ -109,15 +89,5 @@ export class ProductServiceStack extends cdk.Stack {
     );
 
     const importResource = api.root.addResource('import');
-
-    importResource.addMethod(
-      'GET',
-      new apigateway.LambdaIntegration(importProductsFileLambda),
-      {
-        requestParameters: {
-          'method.request.querystring.name': true,
-        },
-      }
-    );
   }
 }

@@ -68,8 +68,8 @@ export class ImportServiceStack extends cdk.Stack {
       }
     );
 
+    bucket.grantPut(importFileParserLambda);
     bucket.grantRead(importFileParserLambda);
-    bucket.grantWrite(importFileParserLambda);
     bucket.grantDelete(importFileParserLambda);
 
     bucket.addEventNotification(

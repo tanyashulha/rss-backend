@@ -1,5 +1,8 @@
 const { handler } = require('../lambda/handlers/importProductsFile');
 
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+
 jest.mock('@aws-sdk/client-s3', () => {
   return {
     S3Client: jest.fn(),
@@ -12,8 +15,6 @@ jest.mock('@aws-sdk/s3-request-presigner', () => {
     getSignedUrl: jest.fn(),
   };
 });
-
-const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 describe('importProductsFile', () => {
   const OLD_ENV = process.env;
@@ -40,7 +41,7 @@ describe('importProductsFile', () => {
     );
   });
 
-  it('returns signed url', async () => {
+  it('returns signed url with correct key', async () => {
     process.env.BUCKET_NAME = 'test-bucket';
 
     getSignedUrl.mockResolvedValue('https://signed-url.com');
@@ -53,6 +54,25 @@ describe('importProductsFile', () => {
     expect(res.body).toBe('https://signed-url.com');
 
     expect(getSignedUrl).toHaveBeenCalledTimes(1);
+
+    expect(process.env.BUCKET_NAME).toBe('test-bucket');
+  });
+
+  it('calls S3 PutObjectCommand with correct params', async () => {
+    process.env.BUCKET_NAME = 'test-bucket';
+
+    getSignedUrl.mockResolvedValue('https://signed-url.com');
+
+    await handler({
+      queryStringParameters: { name: 'test.csv' },
+    });
+
+    expect(PutObjectCommand).toHaveBeenCalledWith(
+      expect.objectContaining({
+        Bucket: 'test-bucket',
+        Key: 'uploaded/test.csv',
+      })
+    );
   });
 
   it('returns 500 on error', async () => {
@@ -68,5 +88,11 @@ describe('importProductsFile', () => {
     expect(JSON.parse(res.body).message).toBe(
       'Internal Server Error'
     );
+  });
+
+  it('handles null event gracefully', async () => {
+    const res = await handler({});
+
+    expect(res.statusCode).toBe(400);
   });
 });

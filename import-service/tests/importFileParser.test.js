@@ -3,7 +3,10 @@ const stream = require('stream');
 const mockSend = jest.fn();
 
 jest.mock('@aws-sdk/client-s3', () => {
+  const original = jest.requireActual('@aws-sdk/client-s3');
+
   return {
+    ...original,
     S3Client: jest.fn(() => ({
       send: mockSend,
     })),
@@ -25,6 +28,12 @@ jest.mock('csv-parser', () => {
     });
   };
 });
+
+const {
+  GetObjectCommand,
+  CopyObjectCommand,
+  DeleteObjectCommand,
+} = require('@aws-sdk/client-s3');
 
 const { handler } = require('../lambda/handlers/importFileParser');
 
@@ -64,6 +73,22 @@ describe('importFileParser', () => {
 
     await handler(event);
 
+    expect(GetObjectCommand).toHaveBeenCalledWith({
+      Bucket: 'test-bucket',
+      Key: 'uploaded/test.csv',
+    });
+
+    expect(CopyObjectCommand).toHaveBeenCalledWith({
+      Bucket: 'test-bucket',
+      CopySource: 'test-bucket/uploaded/test.csv',
+      Key: 'parsed/test.csv',
+    });
+
+    expect(DeleteObjectCommand).toHaveBeenCalledWith({
+      Bucket: 'test-bucket',
+      Key: 'uploaded/test.csv',
+    });
+
     expect(mockSend).toHaveBeenCalledTimes(3);
   });
 
@@ -82,5 +107,34 @@ describe('importFileParser', () => {
     };
 
     await expect(handler(event)).rejects.toThrow('S3 error');
+  });
+
+  it('handles multiple CSV rows correctly', async () => {
+    const readable = stream.Readable.from([
+      'id,name\n',
+      '1,apple\n',
+      '2,banana\n',
+      '3,orange\n',
+    ]);
+
+    mockSend
+      .mockResolvedValueOnce({ Body: readable })
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({});
+
+    const event = {
+      Records: [
+        {
+          s3: {
+            bucket: { name: 'test-bucket' },
+            object: { key: 'uploaded/test.csv' },
+          },
+        },
+      ],
+    };
+
+    await handler(event);
+
+    expect(mockSend).toHaveBeenCalledTimes(3);
   });
 });

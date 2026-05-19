@@ -8,6 +8,8 @@ import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 
 export class ProductServiceStack extends cdk.Stack {
+  public readonly catalogItemsQueue: sqs.Queue;
+
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
@@ -91,9 +93,20 @@ export class ProductServiceStack extends cdk.Stack {
     productsTable.grantWriteData(catalogBatchProcessFn);
     stocksTable.grantWriteData(catalogBatchProcessFn);
 
-    const catalogItemsQueue = new sqs.Queue(this, 'CatalogItemsQueue', {
+    this.catalogItemsQueue = new sqs.Queue(this, 'CatalogItemsQueue', {
       visibilityTimeout: cdk.Duration.seconds(30),
     });
+
+    new cdk.CfnOutput(this, 'CatalogItemsQueueUrl', {
+      value: this.catalogItemsQueue.queueUrl,
+      exportName: 'CatalogItemsQueueUrl',
+    });
+
+    new cdk.CfnOutput(this, 'CatalogItemsQueueArn', {
+      value: this.catalogItemsQueue.queueArn,
+      exportName: 'CatalogItemsQueueArn',
+    });
+
     const products = api.root.addResource('products');
 
     products.addMethod('GET', new apigateway.LambdaIntegration(getProductsListFn));
@@ -107,7 +120,7 @@ export class ProductServiceStack extends cdk.Stack {
     );
 
     catalogBatchProcessFn.addEventSource(
-      new lambdaEventSources.SqsEventSource(catalogItemsQueue, {
+      new lambdaEventSources.SqsEventSource(this.catalogItemsQueue, {
         batchSize: 5,
       })
     );

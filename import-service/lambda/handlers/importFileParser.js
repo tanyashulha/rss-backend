@@ -6,8 +6,12 @@ const {
 } = require('@aws-sdk/client-s3');
 
 const csv = require('csv-parser');
+const { SQSClient, SendMessageCommand } = require('@aws-sdk/client-sqs');
 
 const s3 = new S3Client({ region: process.env.AWS_REGION });
+const sqs = new SQSClient({ region: process.env.AWS_REGION });
+
+const QUEUE_URL = process.env.SQS_URL;
 
 exports.handler = async (event) => {
   console.log('EVENT:', JSON.stringify(event));
@@ -35,15 +39,28 @@ exports.handler = async (event) => {
 
       const stream = response.Body;
 
+     const rows = [];
+
       await new Promise((resolve, reject) => {
-        stream
+        response.Body
           .pipe(csv())
-          .on('data', (data) => {
-            console.log('CSV ROW:', data);
-          })
+          .on('data', (data) => rows.push(data))
           .on('end', resolve)
           .on('error', reject);
       });
+
+      console.log('ROWS COUNT:', rows.length);
+
+      for (const row of rows) {
+        console.log('SEND TO SQS:', row);
+
+        await sqs.send(
+          new SendMessageCommand({
+            QueueUrl: QUEUE_URL,
+            MessageBody: JSON.stringify(row),
+          })
+        );
+      }
 
       console.log('CSV parsing finished');
 

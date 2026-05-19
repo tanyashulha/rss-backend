@@ -52,8 +52,6 @@ exports.handler = async (event) => {
       console.log('ROWS COUNT:', rows.length);
 
       for (const row of rows) {
-        console.log('SEND TO SQS:', row);
-
         await sqs.send(
           new SendMessageCommand({
             QueueUrl: QUEUE_URL,

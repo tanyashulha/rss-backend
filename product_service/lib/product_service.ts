@@ -6,6 +6,8 @@ import * as path from 'path';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
+import * as sns from 'aws-cdk-lib/aws-sns';
+import * as subs from 'aws-cdk-lib/aws-sns-subscriptions';
 
 export class ProductServiceStack extends cdk.Stack {
   public readonly catalogItemsQueue: sqs.Queue;
@@ -32,6 +34,14 @@ export class ProductServiceStack extends cdk.Stack {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
+
+    const createProductTopic = new sns.Topic(this, 'CreateProductTopic', {
+      topicName: 'createProductTopic',
+    });
+
+    createProductTopic.addSubscription(
+      new subs.EmailSubscription('tsulga6@gmail.com'),
+    );
 
     const createProductFn = new lambda.Function(this, 'CreateProductFn', {
       runtime: lambda.Runtime.NODEJS_18_X,
@@ -78,8 +88,11 @@ export class ProductServiceStack extends cdk.Stack {
       environment: {
         PRODUCTS_TABLE: productsTable.tableName,
         STOCKS_TABLE: stocksTable.tableName,
+        CREATE_PRODUCT_TOPIC_ARN: createProductTopic.topicArn,
       },
     });
+
+    createProductTopic.grantPublish(catalogBatchProcessFn);
 
     productsTable.grantReadData(getProductsListFn);
     stocksTable.grantReadData(getProductsListFn);

@@ -2,11 +2,17 @@ const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand } = require("@aws-sdk/lib-dynamodb");
 const { randomUUID } = require("crypto");
 
+const { SNSClient, PublishCommand } = require("@aws-sdk/client-sns");
+
 const client = new DynamoDBClient({});
 const dynamo = DynamoDBDocumentClient.from(client);
 
+const sns = new SNSClient({});
+
 const PRODUCTS_TABLE = process.env.PRODUCTS_TABLE;
 const STOCKS_TABLE = process.env.STOCKS_TABLE;
+
+const TOPIC_ARN = process.env.CREATE_PRODUCT_TOPIC_ARN;
 
 exports.handler = async (event) => {
   console.log("EVENT:", JSON.stringify(event));
@@ -38,6 +44,17 @@ exports.handler = async (event) => {
             product_id: productId,
             count: data.count ?? 1,
           },
+        })
+      );
+
+      await sns.send(
+        new PublishCommand({
+          TopicArn: TOPIC_ARN,
+          Subject: "New product created",
+          Message: JSON.stringify({
+            id: productId,
+            ...data,
+          }),
         })
       );
     }

@@ -47,6 +47,8 @@ exports.handler = async (event) => {
         })
       );
 
+      const price = Number(data.price);
+
       await sns.send(
         new PublishCommand({
           TopicArn: TOPIC_ARN,
@@ -54,7 +56,14 @@ exports.handler = async (event) => {
           Message: JSON.stringify({
             id: productId,
             ...data,
+            price,
           }),
+          MessageAttributes: {
+            price: {
+              DataType: "Number",
+              StringValue: String(price),
+            },
+          },
         })
       );
     }

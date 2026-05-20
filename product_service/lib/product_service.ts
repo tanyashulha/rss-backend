@@ -40,7 +40,23 @@ export class ProductServiceStack extends cdk.Stack {
     });
 
     createProductTopic.addSubscription(
-      new subs.EmailSubscription('tsulga6@gmail.com'),
+      new subs.EmailSubscription('tsulga6@gmail.com', {
+        filterPolicy: {
+          price: sns.SubscriptionFilter.numericFilter({
+            greaterThan: 10000,
+          }),
+        },
+      })
+    );
+
+    createProductTopic.addSubscription(
+      new subs.EmailSubscription('u0131934749@gmail.com', {
+        filterPolicy: {
+          price: sns.SubscriptionFilter.numericFilter({
+            lessThanOrEqualTo: 10000,
+          }),
+        },
+      })
     );
 
     const createProductFn = new lambda.Function(this, 'CreateProductFn', {

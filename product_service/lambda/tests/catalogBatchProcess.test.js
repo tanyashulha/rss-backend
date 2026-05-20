@@ -95,6 +95,12 @@ describe("catalogBatchProcess", () => {
         price: 100,
         count: 2,
       }),
+      MessageAttributes: {
+        price: {
+          DataType: "Number",
+          StringValue: "100",
+        },
+      },
     });
   });
 

@@ -97,6 +97,31 @@ export class ProductServiceStack extends cdk.Stack {
       }
     });
 
+    const corsGatewayResponseHeaders = {
+      'Access-Control-Allow-Origin': "'*'",
+      'Access-Control-Allow-Headers': "'*'",
+    };
+
+    api.addGatewayResponse('Unauthorized', {
+      type: apigateway.ResponseType.UNAUTHORIZED,
+      statusCode: '401',
+      responseHeaders: corsGatewayResponseHeaders,
+      templates: {
+        'application/json':
+          '{"message":"Error 401: Unauthorized — authorization is required (Product Service)"}',
+      },
+    });
+
+    api.addGatewayResponse('AccessDenied', {
+      type: apigateway.ResponseType.ACCESS_DENIED,
+      statusCode: '403',
+      responseHeaders: corsGatewayResponseHeaders,
+      templates: {
+        'application/json':
+          '{"message":"Error 403: Forbidden — invalid or expired credentials (Product Service)"}',
+      },
+    });
+
     const getProductsListFn = new lambda.Function(this, 'GetProductsListFn', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'handlers/getProductsList.handler',

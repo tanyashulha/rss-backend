@@ -21,19 +21,57 @@ const getAuthorizationHeader = (event) => {
   return headers.Authorization || headers.authorization;
 };
 
+const isMissingToken = (authorizationHeader) => {
+  if (!authorizationHeader || !String(authorizationHeader).trim()) {
+    return true;
+  }
+
+  const match = String(authorizationHeader).match(/^Basic\s+(.+)$/i);
+
+  if (!match) {
+    return true;
+  }
+
+  const token = match[1].trim();
+
+  return !token || token === 'null' || token === 'undefined';
+};
+
 const parseBasicCredentials = (authorizationHeader) => {
-  const base64Credentials = authorizationHeader.replace(/^Basic\s+/i, '').trim();
-  const decoded = Buffer.from(base64Credentials, 'base64').toString('utf-8');
+  const match = String(authorizationHeader).match(/^Basic\s+(.+)$/i);
+
+  if (!match) {
+    return null;
+  }
+
+  const base64Credentials = match[1].trim();
+
+  if (!base64Credentials || base64Credentials === 'null' || base64Credentials === 'undefined') {
+    return null;
+  }
+
+  let decoded;
+
+  try {
+    decoded = Buffer.from(base64Credentials, 'base64').toString('utf-8');
+  } catch {
+    return null;
+  }
+
   const separatorIndex = decoded.indexOf(':');
 
   if (separatorIndex === -1) {
     return null;
   }
 
-  return {
-    username: decoded.slice(0, separatorIndex),
-    password: decoded.slice(separatorIndex + 1),
-  };
+  const username = decoded.slice(0, separatorIndex);
+  const password = decoded.slice(separatorIndex + 1);
+
+  if (!username || password === undefined || password === '') {
+    return null;
+  }
+
+  return { username, password };
 };
 
 exports.handler = async (event) => {
@@ -41,14 +79,14 @@ exports.handler = async (event) => {
 
   const authorizationHeader = getAuthorizationHeader(event);
 
-  if (!authorizationHeader) {
+  if (isMissingToken(authorizationHeader)) {
     throw new Error('Unauthorized');
   }
 
   const credentials = parseBasicCredentials(authorizationHeader);
 
   if (!credentials) {
-    return generatePolicy('user', 'Deny', event.methodArn);
+    throw new Error('Unauthorized');
   }
 
   const expectedPassword = process.env[credentials.username];

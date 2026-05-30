@@ -34,6 +34,21 @@ export class ImportServiceStack extends cdk.Stack {
 
     bucket.grantPut(importProductsFileLambda);
 
+    const basicAuthorizerFn = lambda.Function.fromFunctionName(
+      this,
+      'BasicAuthorizerFn',
+      'basicAuthorizer',
+    );
+
+    const basicAuthorizer = new apigateway.TokenAuthorizer(
+      this,
+      'BasicAuthorizer',
+      {
+        handler: basicAuthorizerFn,
+        identitySource: apigateway.IdentitySource.header('Authorization'),
+      },
+    );
+
     const api = new apigateway.RestApi(this, 'ImportApi', {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
@@ -48,6 +63,8 @@ export class ImportServiceStack extends cdk.Stack {
       'GET',
       new apigateway.LambdaIntegration(importProductsFileLambda),
       {
+        authorizer: basicAuthorizer,
+        authorizationType: apigateway.AuthorizationType.CUSTOM,
         requestParameters: {
           'method.request.querystring.name': true,
         },

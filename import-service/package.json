@@ -1,4 +1,9 @@
 {
+  "name": "import-service",
+  "version": "0.1.0",
+  "bin": {
+    "import-service": "bin/import-service.js"
+  },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1045.0",
     "@aws-sdk/s3-request-presigner": "^3.1045.0",
@@ -7,9 +12,15 @@
     "csv-parser": "^3.2.1"
   },
   "devDependencies": {
-    "jest": "^30.3.0"
+    "@types/node": "^24.12.2",
+    "aws-cdk": "2.1118.4",
+    "jest": "^30.3.0",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.9.3"
   },
   "scripts": {
-    "test": "jest"
+    "build": "tsc",
+    "test": "jest",
+    "cdk": "cdk"
   }
 }

@@ -26,6 +26,44 @@ paths:
                       type: string
                     price:
                       type: number
+                    count:
+                      type: integer
+
+    post:
+      summary: Create new product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: number
+                count:
+                  type: integer
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  title:
+                    type: string
+                  description:
+                    type: string
+                  price:
+                    type: number
+                  count:
+                    type: integer
 
   /products/{productId}:
     get:
@@ -52,6 +90,8 @@ paths:
                     type: string
                   price:
                     type: number
+                  count:
+                    type: integer
         "404":
           description: Product not found
           content:

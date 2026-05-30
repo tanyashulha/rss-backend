@@ -69,12 +69,57 @@ export class ProductServiceStack extends cdk.Stack {
       },
     });
 
+    const basicAuthorizerFn = lambda.Function.fromFunctionName(
+      this,
+      'BasicAuthorizerFn',
+      'basicAuthorizer',
+    );
+
+    const basicAuthorizer = new apigateway.TokenAuthorizer(
+      this,
+      'BasicAuthorizer',
+      {
+        handler: basicAuthorizerFn,
+        identitySource: apigateway.IdentitySource.header('Authorization'),
+      },
+    );
+
+    const authorizedMethodOptions = {
+      authorizer: basicAuthorizer,
+      authorizationType: apigateway.AuthorizationType.CUSTOM,
+    };
+
     const api = new apigateway.RestApi(this, 'ProductApi', {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
         allowHeaders: apigateway.Cors.DEFAULT_HEADERS,
       }
+    });
+
+    const corsGatewayResponseHeaders = {
+      'Access-Control-Allow-Origin': "'*'",
+      'Access-Control-Allow-Headers': "'*'",
+    };
+
+    api.addGatewayResponse('Unauthorized', {
+      type: apigateway.ResponseType.UNAUTHORIZED,
+      statusCode: '401',
+      responseHeaders: corsGatewayResponseHeaders,
+      templates: {
+        'application/json':
+          '{"message":"Error 401: Unauthorized — authorization is required (Product Service)"}',
+      },
+    });
+
+    api.addGatewayResponse('AccessDenied', {
+      type: apigateway.ResponseType.ACCESS_DENIED,
+      statusCode: '403',
+      responseHeaders: corsGatewayResponseHeaders,
+      templates: {
+        'application/json':
+          '{"message":"Error 403: Forbidden — invalid or expired credentials (Product Service)"}',
+      },
     });
 
     const getProductsListFn = new lambda.Function(this, 'GetProductsListFn', {
@@ -138,14 +183,23 @@ export class ProductServiceStack extends cdk.Stack {
 
     const products = api.root.addResource('products');
 
-    products.addMethod('GET', new apigateway.LambdaIntegration(getProductsListFn));
+    products.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(getProductsListFn),
+      authorizedMethodOptions,
+    );
 
     const productById = products.addResource('{productId}');
-    productById.addMethod('GET', new apigateway.LambdaIntegration(getProductByIdFn));
+    productById.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(getProductByIdFn),
+      authorizedMethodOptions,
+    );
 
     products.addMethod(
       'POST',
-      new apigateway.LambdaIntegration(createProductFn)
+      new apigateway.LambdaIntegration(createProductFn),
+      authorizedMethodOptions,
     );
 
     catalogBatchProcessFn.addEventSource(

@@ -34,11 +34,51 @@ export class ImportServiceStack extends cdk.Stack {
 
     bucket.grantPut(importProductsFileLambda);
 
+    const basicAuthorizerFn = lambda.Function.fromFunctionName(
+      this,
+      'BasicAuthorizerFn',
+      'basicAuthorizer',
+    );
+
+    const basicAuthorizer = new apigateway.TokenAuthorizer(
+      this,
+      'BasicAuthorizer',
+      {
+        handler: basicAuthorizerFn,
+        identitySource: apigateway.IdentitySource.header('Authorization'),
+      },
+    );
+
     const api = new apigateway.RestApi(this, 'ImportApi', {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
         allowHeaders: apigateway.Cors.DEFAULT_HEADERS,
+      },
+    });
+
+    const corsGatewayResponseHeaders = {
+      'Access-Control-Allow-Origin': "'*'",
+      'Access-Control-Allow-Headers': "'*'",
+    };
+
+    api.addGatewayResponse('Unauthorized', {
+      type: apigateway.ResponseType.UNAUTHORIZED,
+      statusCode: '401',
+      responseHeaders: corsGatewayResponseHeaders,
+      templates: {
+        'application/json':
+          '{"message":"Error 401: Unauthorized — authorization is required (Import Service)"}',
+      },
+    });
+
+    api.addGatewayResponse('AccessDenied', {
+      type: apigateway.ResponseType.ACCESS_DENIED,
+      statusCode: '403',
+      responseHeaders: corsGatewayResponseHeaders,
+      templates: {
+        'application/json':
+          '{"message":"Error 403: Forbidden — invalid or expired credentials (Import Service)"}',
       },
     });
 
@@ -48,6 +88,8 @@ export class ImportServiceStack extends cdk.Stack {
       'GET',
       new apigateway.LambdaIntegration(importProductsFileLambda),
       {
+        authorizer: basicAuthorizer,
+        authorizationType: apigateway.AuthorizationType.CUSTOM,
         requestParameters: {
           'method.request.querystring.name': true,
         },

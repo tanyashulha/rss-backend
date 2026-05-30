@@ -9,4 +9,7 @@ node_modules/
 cdk.out
 
 !lambda/**/*.js
+!authorization-service/lambda/**/*.js
 !scripts/**/*.js
+
+.env

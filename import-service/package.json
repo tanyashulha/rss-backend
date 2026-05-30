@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1045.0",
+    "@aws-sdk/s3-request-presigner": "^3.1045.0",
+    "aws-cdk-lib": "^2.253.1",
+    "constructs": "^10.6.0",
+    "csv-parser": "^3.2.1"
+  },
+  "devDependencies": {
+    "jest": "^30.3.0"
+  },
+  "scripts": {
+    "test": "jest"
+  }
+}

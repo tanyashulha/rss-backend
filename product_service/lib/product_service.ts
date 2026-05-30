@@ -69,6 +69,26 @@ export class ProductServiceStack extends cdk.Stack {
       },
     });
 
+    const basicAuthorizerFn = lambda.Function.fromFunctionName(
+      this,
+      'BasicAuthorizerFn',
+      'basicAuthorizer',
+    );
+
+    const basicAuthorizer = new apigateway.TokenAuthorizer(
+      this,
+      'BasicAuthorizer',
+      {
+        handler: basicAuthorizerFn,
+        identitySource: apigateway.IdentitySource.header('Authorization'),
+      },
+    );
+
+    const authorizedMethodOptions = {
+      authorizer: basicAuthorizer,
+      authorizationType: apigateway.AuthorizationType.CUSTOM,
+    };
+
     const api = new apigateway.RestApi(this, 'ProductApi', {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
@@ -138,14 +158,23 @@ export class ProductServiceStack extends cdk.Stack {
 
     const products = api.root.addResource('products');
 
-    products.addMethod('GET', new apigateway.LambdaIntegration(getProductsListFn));
+    products.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(getProductsListFn),
+      authorizedMethodOptions,
+    );
 
     const productById = products.addResource('{productId}');
-    productById.addMethod('GET', new apigateway.LambdaIntegration(getProductByIdFn));
+    productById.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(getProductByIdFn),
+      authorizedMethodOptions,
+    );
 
     products.addMethod(
       'POST',
-      new apigateway.LambdaIntegration(createProductFn)
+      new apigateway.LambdaIntegration(createProductFn),
+      authorizedMethodOptions,
     );
 
     catalogBatchProcessFn.addEventSource(

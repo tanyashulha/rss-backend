@@ -1,0 +1,25 @@
+{
+  "name": "authorization-service",
+  "version": "0.1.0",
+  "bin": {
+    "authorization-service": "bin/authorization-service.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.257.0",
+    "constructs": "^10.6.0",
+    "dotenv": "^17.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "aws-cdk": "2.1118.4",
+    "jest": "^30.3.0",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.9.3"
+  }
+}

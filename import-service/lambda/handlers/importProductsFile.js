@@ -2,10 +2,11 @@ const { S3Client } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { PutObjectCommand } = require('@aws-sdk/client-s3');
 
-const BUCKET = process.env.BUCKET_NAME;
 const s3 = new S3Client({});
 
 exports.handler = async (event) => {
+  const BUCKET = process.env.BUCKET_NAME;
+
   try {
     const fileName = event.queryStringParameters?.name;
 
